@@ -2524,16 +2524,16 @@ def determine_covariate_distributions(
                         'median': float(values.median()),
                         'q1': float(values.quantile(0.25)),
                         'q3': float(values.quantile(0.75)),
-                        # If the numeric column only contains 0/1, report counts/props for females (0)
-                        'count_1': float(values.eq(0).sum()) if values.isin([0, 1]).all() else np.nan,
-                        'prop_1': float(values.eq(0).mean()) if values.isin([0, 1]).all() else np.nan,
+                        # If the numeric column only contains 0/1, report counts/props of 1s (sign of ICD presence)
+                        'count_1': float(values.eq(1).sum()) if values.isin([0, 1]).all() else np.nan,
+                        'prop_1': float(values.eq(1).mean()) if values.isin([0, 1]).all() else np.nan,
                     }
                 else:
                     # For categorical sex variables, count females regardless of encoding
                     counts = values.value_counts(dropna=True)
                     # Try multiple encodings: 0, 'Female', 'female', 'F', 'f'
                     count_female = 0.0
-                    for female_val in [0, 'Female', 'female', 'F', 'f']:
+                    for female_val in ['0', 'Female', 'female', 'F', 'f']:
                         if female_val in counts.index:
                             count_female = float(counts.get(female_val, 0.0))
                             break
