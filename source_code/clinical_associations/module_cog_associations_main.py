@@ -193,7 +193,7 @@ def main():
         } 
 
     # Bootstrap iterations for quantile regression (R) standard errors and confidence intervals
-    QUANTILE_REGRESSION_BOOTSTRAP_R = 1000
+    QUANTILE_REGRESSION_BOOTSTRAP_R = 5000
     
     # -------------------------------------------------------------------------
     # Step 1: Initializing R environment once
@@ -211,22 +211,24 @@ def main():
     # (helper handles expected column names and simple quality checks)
     data = load_and_rename_cohort_data(DATA_FILE)
 
-    n_controls_total = int((data[GROUP_COLUMN] == 0).sum())
+    # ---- Cohort size summary ----
+    n_controls_total  = int((data[GROUP_COLUMN] == 0).sum())
     n_depressed_total = int((data[GROUP_COLUMN] == 1).sum())
-    n_fc_internal0_total = ((data['functional_internal_cluster'] == '0').sum())
-    n_fc_internal1_total = ((data['functional_internal_cluster'] == '1').sum())
-    n_sc_internal0_total = ((data['structural_internal_cluster'] == '0').sum())
-    n_sc_internal1_total = ((data['structural_internal_cluster'] == '1').sum())
-    n_sfc_internal0_total = ((data['sfc_internal_cluster'] == '0').sum())
-    n_sfc_internal1_total = ((data['sfc_internal_cluster'] == '1').sum())
-    print(f"  N controls: {n_controls_total}")
-    print(f"  N depressed: {n_depressed_total}")
-    print(f"  N functional internal cluster 0: {n_fc_internal0_total}")
-    print(f"  N functional internal cluster 1: {n_fc_internal1_total}")
-    print(f"  N structural internal cluster 0: {n_sc_internal0_total}")
-    print(f"  N structural internal cluster 1: {n_sc_internal1_total}")
-    print(f"  N sfc internal cluster 0: {n_sfc_internal0_total}")
-    print(f"  N sfc internal cluster 1: {n_sfc_internal1_total}")
+
+    print(f"\nOverall cohort:")
+    print(f"  N controls  : {n_controls_total}")
+    print(f"  N depressed : {n_depressed_total}")
+
+    print("\nCluster sizes (depressed subjects only):")
+    for conn_type in ["functional", "structural", "sfc"]:
+        for dir_type in ["internal", "external"]:
+            col = f"{conn_type}_{dir_type}_cluster"
+            if col in data.columns:
+                n0 = int((data[col] == "0").sum())
+                n1 = int((data[col] == "1").sum())
+                print(f"  {col:45s}  Cluster 0={n0:4d}  Cluster 1={n1:4d}")
+            else:
+                print(f"  {col:45s}  NOT FOUND in dataset")
     
     # -------------------------------------------------------------------------
     # Step 3: Calculate task-wise robust z-scores (referenced to control cohort) for depression cohort, reverse where needed

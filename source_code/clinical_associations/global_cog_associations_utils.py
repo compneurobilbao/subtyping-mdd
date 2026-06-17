@@ -1066,7 +1066,7 @@ def quantile_regression(
 
                 if (length(y) < 2) return(NA_real_)
 
-                s_res <- mad(y - yhat, center = 0, constant = 1)
+                s_res <- mad(y - yhat, center = median(y - yhat), constant = 1)
                 s_tot <- mad(y, center = median(y), constant = 1)
 
                 if (!is.finite(s_tot) || s_tot == 0) return(NA_real_)
