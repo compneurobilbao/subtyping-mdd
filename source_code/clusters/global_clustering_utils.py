@@ -2836,7 +2836,9 @@ def perform_clustering_validation(X_mat, Z, clusters, conn_type, out_dir, cluste
     conn_type : str
         Connectivity type ('functional', 'structural', 'sfc')
     out_dir : str
-        Output directory
+        Output directory for CSV results
+    cluster_stability_bootstrap_iter : int
+        Number of bootstrap iterations for stability assessment
     
     Returns
     -------
@@ -2899,11 +2901,6 @@ def perform_clustering_validation(X_mat, Z, clusters, conn_type, out_dir, cluste
     
     print(f"  Computing bootstrap stability ({cluster_stability_bootstrap_iter} iterations)...")
     stability_results = bootstrap_clustering_stability(X_mat, clusters, n_boot=cluster_stability_bootstrap_iter)
-    
-    print(f"    Mean per-subject stability: {np.nanmean(stability_results['per_subject_stability']):.3f}")
-    print(f"    Mean NMI: {np.nanmean(stability_results['nmi_list']):.3f}")
-    print(f"    Mean Jaccard (Cluster 0): {np.nanmean(stability_results['jaccard_cluster0']):.3f}")
-    print(f"    Mean Jaccard (Cluster 1): {np.nanmean(stability_results['jaccard_cluster1']):.3f}")
     
     return {
         'sil_df': sil_df,

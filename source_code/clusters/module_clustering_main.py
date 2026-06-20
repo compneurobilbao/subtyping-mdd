@@ -130,20 +130,20 @@ DIRECTION_TYPES = ('internal', 'external')
 ICD_10_COVARIATES = ['I10', 'Z864', 'F419']
 PROGRESS_EVERY = int(os.getenv('MC_PROGRESS_EVERY', '50'))
 
-DEPRESSION_DIR = '.../data/UKB/F32_notask_STRCO_RSSCHA_RSTIA'
-CONTROL_DIR = '.../data/UKB/control_notask_STRCO_RSSCHA_RSTIA'
-GENERAL_DIR = '.../data/UKB/cohorts'
-COMBINED_COHORT_PATH = '.../data/UKB/cohorts/combined_cohort_F32.csv'
+DEPRESSION_DIR = '/home/f_moldovan/projects/subtyping_depression/data/UKB/F32_notask_STRCO_RSSCHA_RSTIA'
+CONTROL_DIR = '/home/f_moldovan/projects/subtyping_depression/data/UKB/control_notask_STRCO_RSSCHA_RSTIA'
+GENERAL_DIR = '/home/f_moldovan/projects/subtyping_depression/data/UKB/cohorts'
+COMBINED_COHORT_PATH = '/home/f_moldovan/projects/subtyping_depression/data/UKB/cohorts/combined_cohort_F32.csv'
 
-PLOTS_DIR = '.../reports/plots/schaefer1000+tian54'
-FIGURES_DIR = '.../reports/figures/schaefer1000+tian54'
+PLOTS_DIR = '/home/f_moldovan/projects/subtyping_depression/reports/plots/schaefer1000+tian54'
+FIGURES_DIR = '/home/f_moldovan/projects/subtyping_depression/reports/figures/schaefer1000+tian54'
 
 # Motion metrics (column names in head_motion.csv)
 fMRI_MOTION_METRIC = 'p24441_i2'  # Framewise displacement for fMRI
 dMRI_MOTION_METRIC = 'p24453_i2'  # Mean relative head motion for dMRI
 
-COMMUNITY_LABELS_PATH = '.../notebooks/CM.txt'
-ATLAS_FILE = '.../Schaefer1000_TianS4_combined.nii.gz'
+COMMUNITY_LABELS_PATH = '/home/f_moldovan/projects/subtyping_depression/notebooks/CM.txt'
+ATLAS_FILE = '/home/f_moldovan/projects/subtyping_depression/atlases/deterministic/self_integrated/Schaefer1000_TianS4_combined.nii.gz'
 
 # Bootstrap iterations for quantile regression (R) standard errors and confidence intervals
 QUANTILE_REGRESSION_BOOTSTRAP_R = 5000
@@ -287,7 +287,7 @@ def main():
         dir_types=DIRECTION_TYPES,
     )
     validation_df.to_csv(
-        os.path.join(GENERAL_DIR, 'module_connectivity_clustering_validation.csv'),
+        os.path.join(PLOTS_DIR, 'module_connectivity_clustering_validation.csv'),
         index=False,
     )
     for row in summary:

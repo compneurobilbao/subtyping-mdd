@@ -1484,7 +1484,7 @@ def bootstrap_clustering_stability(X, original_labels, n_boot=500, seed=12345):
     
     # Stability score = match_count / sample_count (proportion of consistent assignments)
     stability_scores[mask] = match_counts[mask] / sample_counts[mask]
-    
+
     # Return dictionary of all stability metrics
     return {
         'per_subject_stability': stability_scores,  # Per-subject stability proportion [0-1]
@@ -2054,7 +2054,7 @@ def perform_module_hierarchical_clustering(
         DataFrame with 'eid', 'depression_status', and module feature columns.
         Must contain columns matching pattern '{module}_{dir_type}_{conn_type}'.
     plots_dir : str
-        Directory for saving bootstrap diagnostic plots.
+        Directory for saving bootstrap diagnostic plots and CSVs.
     figures_dir : str
         Directory for saving dendrograms.
     conn_types : tuple of str, default=('functional', 'structural', 'sfc')
@@ -2152,6 +2152,35 @@ def perform_module_hierarchical_clustering(
             # === BOOTSTRAP STABILITY ANALYSIS ===
             # Assess how reproducible the cluster assignments are via resampling
             stability_results = bootstrap_clustering_stability(X, cluster_labels, n_boot=bootstrap_iter)
+
+            # Save bootstrap stability results to CSV for this modality (separate CSVs because one has 975 values (subjects) and the other 5000 (bootstrap samples))
+            subject_stability_results = pd.DataFrame(data = {"per_subject_stability": stability_results["per_subject_stability"],
+                                                        "sample_counts": stability_results["sample_counts"],
+                                                        "match_counts": stability_results["match_counts"]})
+            
+            jaccard_and_nmi_results = pd.DataFrame(data = {"jaccard_cluster0": stability_results["jaccard_cluster0"],
+                                                           "jaccard_cluster1": stability_results["jaccard_cluster1"],
+                                                           "nmi_list": stability_results["nmi_list"]})
+
+            subject_stability_results.to_csv(
+                os.path.join(
+                    plots_dir,
+                    f'{conn_type}_con',
+                    f'module_{dir_type}_bootstrap_subject_stability_results.csv',
+                ),
+                index=False,
+            )
+
+            jaccard_and_nmi_results.to_csv(
+                os.path.join(
+                    plots_dir,
+                    f'{conn_type}_con',
+                    f'module_{dir_type}_bootstrap_jaccard_nmi_results.csv',
+                ),
+                index=False,
+            )
+
+            print(f"Saved bootstrap stability results for {conn_type} {dir_type} to CSV.")
             
             # Generate diagnostic plots showing stability metrics
             plot_bootstrap_diagnostics(

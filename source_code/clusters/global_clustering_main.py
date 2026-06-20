@@ -249,7 +249,6 @@ def capture_stdout_to_log(log_path):
 # ==============================================================================
 # MAIN PIPELINE
 # ==============================================================================
-
 def execute_pipeline_for_conn_type(conn_type, cohort_data, validation_plots_dir,
                    figures_base_dir, motion_columns, primary_motion_metric, fdr_log_path,
                    icd_covariates, dependent_var, cluster_col, group_col):

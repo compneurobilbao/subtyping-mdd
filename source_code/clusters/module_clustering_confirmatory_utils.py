@@ -5,7 +5,7 @@ module_clustering_confirmatory_utils
 Utilities for module-level confirmatory analyses of connectivity features
 against SFC-derived clustering. This module contains helpers to run
 quantile-regression tests (via R/quantreg through rpy2), apply multiple-testing
-correction, and produce publication-ready visualizations (violin panels and
+correction, and produce visualizations (violin panels and
 brainmap figures) for module-wise connectivity profiles.
 
 Primary responsibilities
