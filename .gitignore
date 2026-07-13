@@ -1,0 +1,24 @@
+# Python bytecode (compiled files)
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Virtual Environments
+.neurovenv/
+
+# External source code and services (compneuro_tools) -> visit https://github.com/itellaetxe/compneuro_tools for more details
+external/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Environment variables (Sensitive Data!)
+.env
+
+# All of the data (all data is UKB data, which cannot be shared)
+data/
+
+# All reports (figures and plots, which are derived from UKB data and also cannot be shared)
+reports/
