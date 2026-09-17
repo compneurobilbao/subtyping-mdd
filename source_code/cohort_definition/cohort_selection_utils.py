@@ -408,15 +408,7 @@ def count_codes_in_cohort(
     Returns
     -------
     pd.DataFrame
-        DataFrame with ICD-10 codes and their counts as values, sorted in descending order.
-    
-    Examples
-    --------
-    >>> code_counts = count_codes_in_cohort(depression_cohort, codes_column='codes')
-    >>> print(code_counts)
-    F32.1    250
-    F33.1    200
-    F32.0    150
+        DataFrame with ICD-10 codes and their counts, proportions, and human-readable meanings, sorted by count in descending order.
     ...
     
     Notes
@@ -587,7 +579,7 @@ def build_comorbidity_indicator_matrix(
     This function is designed to work together with `count_codes_in_cohort`.
 
      It:
-     1) Preserves all rows/eIDs in `cohort_df`.
+    1) Preserves all rows/eIDs in `cohort_df`.
     2) Selects which comorbidities (ICD-10 codes) to include based on a
        prevalence threshold (proportion of subjects with the code) and/or an
        explicit include list.
