@@ -1,4 +1,5 @@
-""" MDD (subclinical) symptom and symptom severity associations with SFC-EXT derived MDD subtypes
+""" MDD (subclinical) symptom associations with SFC-EXT derived MDD subtypes
+LOOK AT THE AGE AND SEX DIFFERENCES BETWEEN CONTROLS, MDD, CLUSTERS AFTER EACH EXCLUSION ROUND IN EACH DATASET
 """
 import os
 import pandas as pd
@@ -17,9 +18,8 @@ from statsmodels.stats import multitest
 GENERAL_DATA_PATH = ".../data/UKB"
 COHORT_DATA_PATH = os.path.join(GENERAL_DATA_PATH, "cohorts")
 SYMPTOMS_DATA_PATH = os.path.join(GENERAL_DATA_PATH, "mental_health")
-LOG_PATH = os.path.join(SYMPTOMS_DATA_PATH, "symptom_severity_associations_log.txt")
-PLOTS_DIR = ".../reports/plots/symptom_severity_associations"
-
+LOG_PATH = os.path.join(SYMPTOMS_DATA_PATH, "symptom_associations_log.txt")
+PLOTS_DIR = ".../reports/plots/symptom_associations"
 # ==============================================================================
 # Load datasets
 # ==============================================================================
@@ -81,54 +81,6 @@ SYMPTOMS_plots_df["sfc_external_cluster"] = pd.Categorical(
     SYMPTOMS_plots_df["sfc_external_cluster"], categories=["Control", "Depression", "Cluster 0", "Cluster 1"], ordered=True
 )
 # Now we have a clean symptom dataset with relevant variables for the MDD and control cohort, ready for association analysis with SFC-EXT derived subtypes.
-
-# SYMPTOM SEVERITY DATASET
-MENTAL_HEALTH_DF = pd.read_csv(os.path.join(SYMPTOMS_DATA_PATH, "mental_health.csv"), sep = ";")
-print(f"Mental health dataset loaded with shape: {MENTAL_HEALTH_DF.shape}")
-# Get just the variables we need for the analysis
-SYMPTOM_SEVERITY_VARS = ["p4609_i2", "p4620_i2", "p5375_i2", "p5386_i2"] # longest period of depression episode, number of depression episodes, longest period of unenthusiasm/disinterest episode, number of unenthusiasm/disinterest episodes
-SYMPTOMS_SEVERITY_DF = MENTAL_HEALTH_DF[["eid"] + SYMPTOM_SEVERITY_VARS].copy()
-print(f"Symptom severity dataset filtered to relevant variables with shape: {SYMPTOMS_SEVERITY_DF.shape}")
-# Now check if MDD and control people have these variables and that values are non-null
-# First ensure both eid columns are of the same type
-COHORT_DF["eid"] = COHORT_DF["eid"].astype(str)
-SYMPTOMS_SEVERITY_DF["eid"] = SYMPTOMS_SEVERITY_DF["eid"].astype(str)
-# Now check if the eids in SYMPTOMS_SEVERITY_DF are in COHORT_DF
-SYMPTOMS_SEVERITY_DF = SYMPTOMS_SEVERITY_DF[SYMPTOMS_SEVERITY_DF["eid"].isin(COHORT_DF["eid"])]
-print(f"Symptom severity dataset filtered to MDD and control cohort with shape: {SYMPTOMS_SEVERITY_DF.shape}")
-# Check for null-values, if any individual dropped due to null values, show which eid they had and which variable was null
-null_eids = SYMPTOMS_SEVERITY_DF[SYMPTOMS_SEVERITY_DF[SYMPTOM_SEVERITY_VARS].isnull().any(axis=1)]["eid"].tolist()
-if null_eids:
-    print(f"Warning: The following eids had null values for relevant symptom variables and were dropped: {null_eids}")
-    SYMPTOMS_SEVERITY_DF = SYMPTOMS_SEVERITY_DF.dropna(subset=SYMPTOM_SEVERITY_VARS)
-    print(f"Symptom severity dataset filtered to remove null values with shape: {SYMPTOMS_SEVERITY_DF.shape}")
-# Now check unique values for remaining individuals
-for var in SYMPTOM_SEVERITY_VARS:
-    print(f"Variable {var} unique values: {SYMPTOMS_SEVERITY_DF[var].unique()})")
-# All variables show the values -3 and -1, which indicate "Prefer not to answer" and "Do not know" in UKB coding. We will drop these individuals from the analysis.
-unsuitable_eids = SYMPTOMS_SEVERITY_DF[SYMPTOMS_SEVERITY_DF[SYMPTOM_SEVERITY_VARS].isin([-3, -1]).any(axis=1)]["eid"].tolist()
-SYMPTOMS_SEVERITY_DF = SYMPTOMS_SEVERITY_DF[~SYMPTOMS_SEVERITY_DF[SYMPTOM_SEVERITY_VARS].isin([-3, -1]).any(axis=1)]
-print(f"Symptom severity dataset filtered to remove 'Prefer not to answer' and 'Do not know' responses with shape: {SYMPTOMS_SEVERITY_DF.shape}")
-# Check again the range of values for remaining individuals
-for var in SYMPTOM_SEVERITY_VARS:
-    print(f"Variable {var} unique values: {SYMPTOMS_SEVERITY_DF[var].unique()}")
-# Check to which cluster the excluded individuals belonged
-excluded_eids = null_eids + unsuitable_eids
-excluded_cluster_info = COHORT_DF[COHORT_DF["eid"].isin(excluded_eids)][["eid", "sfc_external_cluster"]]
-print(f"Excluded individuals from symptom severity dataset due to null or unsuitable values:\n{excluded_cluster_info['sfc_external_cluster'].value_counts()}")
-# Now add the sfc_external_cluster column to the symptom severity dataset for association analysis
-SYMPTOMS_SEVERITY_DF = SYMPTOMS_SEVERITY_DF.merge(COHORT_DF[["eid", "sfc_external_cluster"]], on="eid", how="left")
-print(f"Symptom severity dataset after merging with SFC-EXT clusters: {SYMPTOMS_SEVERITY_DF.info()}")
-# Append total depression cohort (Cluster 0 + Cluster 1 combined)
-dep_df = SYMPTOMS_SEVERITY_DF[SYMPTOMS_SEVERITY_DF["sfc_external_cluster"].isin(["Cluster 0", "Cluster 1"])].copy()
-dep_df["sfc_external_cluster"] = "Depression"
-SYMPTOMS_SEVERITY_DF = pd.concat([SYMPTOMS_SEVERITY_DF, dep_df], ignore_index=True)
-# Now ensure the sfc_external_cluster column is categorical with the correct order (correct for histplots)
-SYMPTOMS_SEVERITY_plots_df = SYMPTOMS_SEVERITY_DF.copy() # We will use this copy for plotting, while keeping the original SYMPTOMS_SEVERITY_DF for analysis
-SYMPTOMS_SEVERITY_plots_df["sfc_external_cluster"] = pd.Categorical(
-    SYMPTOMS_SEVERITY_plots_df["sfc_external_cluster"], categories=["Control", "Depression", "Cluster 0", "Cluster 1"], ordered=True
-)
-# Now we have a clean symptom severity dataset with relevant variables for the MDD and control cohort, ready for association analysis with SFC-EXT derived subtypes.
 
 # ==============================================================================
 # Helper functions for capturing significance and drawing brackets on the right
@@ -216,13 +168,19 @@ def print_percentiles(df, variables, dataset_name):
             percentiles.columns = ['25th Percentile', '50th Percentile (Median)', '75th Percentile']
             print(percentiles)
 
+def print_categorical_percentages(df, categorical_vars, dataset_name):
+    print(f"\nCategorical variable percentages for {dataset_name} dataset:")
+    for var in categorical_vars:
+        if var in df.columns:
+            print(f"\nVariable: {var}")
+            percentages = df.groupby("sfc_external_cluster")[var].value_counts(normalize=True).unstack() * 100
+            print(percentages)
+
 # SYMPTOMS DATASET
 # Exclude categorical variable p2030_i2 (guilty feelings) from percentiles
 SYMPTOM_VARS_CONTINUOUS = [var for var in SYMPTOM_VARS if var != "p2030_i2"]
 print_percentiles(SYMPTOMS_DF, SYMPTOM_VARS_CONTINUOUS, "MDD Symptoms")
-
-# SYMPTOM SEVERITY DATASET
-print_percentiles(SYMPTOMS_SEVERITY_DF, SYMPTOM_SEVERITY_VARS, "MDD Symptoms Severity")
+print_categorical_percentages(SYMPTOMS_DF, [var for var in SYMPTOM_VARS if var == "p2030_i2"], "MDD Symptoms")
 
 # ==============================================================================
 # Formally test the associations between each lifestyle/environment variables and 
@@ -359,25 +317,6 @@ _, sym_p_adj = apply_multiple_testing_correction(
 )
 store_pvals(sym_p_adj, symptom_variable_names, comparisons_cluster)
 
-# SYMPTOM SEVERITY DATASET
-symptom_severity_p_values = []
-symptom_severity_variable_names = []
-symptom_severity_test_methods = []
-for var in SYMPTOM_SEVERITY_VARS:
-    for comparison_name, (group_a, group_b) in comparisons_cluster.items():
-        stat, p = _mannwhitney_test(SYMPTOMS_SEVERITY_DF, 'sfc_external_cluster', group_a, group_b, var)
-        symptom_severity_p_values.append(p)
-        symptom_severity_variable_names.append(f"{var} ({comparison_name})")
-        symptom_severity_test_methods.append("Mann-Whitney U")
-
-_, symptom_severity_p_adj = apply_multiple_testing_correction(
-    p_values=symptom_severity_p_values,
-    variable_names=symptom_severity_variable_names,
-    test_methods=symptom_severity_test_methods,
-    log_path=LOG_PATH,
-)
-store_pvals(symptom_severity_p_adj, symptom_severity_variable_names, comparisons_cluster)
-
 # ==============================================================================
 # Visualize the distribution of each lifestyle/environment variable across the
 # control group and SFC-EXT derived clusters (with significance highlighted)
@@ -482,43 +421,3 @@ for var in SYMPTOM_VARS:
         plt.ylabel("Group")
         plt.tight_layout()
         plt.savefig(os.path.join(PLOTS_DIR, f"{title_var}.svg"), dpi=300)
-
-# SYMPTOM SEVERITY DATASET
-for var in SYMPTOM_SEVERITY_VARS: 
-    current_pvals = [master_pvals.get((var, g1, g2), np.nan) for g1, g2 in plot_comparisons]
-
-    if var == "p4609_i2":
-        title_var = "longest period of (subclinical) depression episode"
-        title_x = "Longest period of (subclinical) depression episode (weeks)"
-    elif var == "p4620_i2":
-        title_var = "number of (subclinical) depression episodes"
-        title_x = "Number of (subclinical) depression episodes"
-    elif var == "p5375_i2":
-        title_var = "longest period of (subclinical) disinterest episode"
-        title_x = "Longest period of (subclinical) disinterest episode (weeks)"
-    elif var == "p5386_i2":
-        title_var = "number of (subclinical) disinterest episodes"
-        title_x = "Number of (subclinical) disinterest episodes"
-    plt.figure(figsize=(8, 6))
-    ax = pt.RainCloud(
-        x="sfc_external_cluster",
-        y=var,
-        hue="sfc_external_cluster",
-        order=group_order,
-        data=SYMPTOMS_SEVERITY_plots_df,
-        palette=palette_list,
-        move=0.25, 
-        cut=0, 
-        orient="h",
-        linewidth=1.5,
-        box_linewidth=1.5,
-    )
-    
-    y_coords = {g: i for i, g in enumerate(group_order)}
-    draw_right_brackets(ax, y_coords, plot_comparisons, current_pvals)
-
-    plt.title(f"Distribution of {title_var}")
-    plt.xlabel(title_x)
-    plt.ylabel("Group")
-    plt.tight_layout()
-    plt.savefig(os.path.join(PLOTS_DIR, f"{title_var}.svg"), dpi=300)

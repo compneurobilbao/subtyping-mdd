@@ -19,7 +19,6 @@ COHORT_DATA_PATH = os.path.join(GENERAL_DATA_PATH, "cohorts")
 LIFESTYLE_ENVIRONMENT_DATA_PATH = os.path.join(GENERAL_DATA_PATH, "lifestyle_environment")
 LOG_PATH = os.path.join(LIFESTYLE_ENVIRONMENT_DATA_PATH, "lifestyle_environment_associations_log.txt")
 PLOTS_DIR = ".../reports/plots/lifestyle_environment_associations"
-
 # ==============================================================================
 # Load datasets
 # ==============================================================================
@@ -419,6 +418,7 @@ def draw_right_brackets(ax, y_coords, comparisons, p_values):
 # ==============================================================================
 # Print out 25th, 50th, and 75th percentiles for each variable in each dataset
 # per group (Control, Depression, Cluster 0, Cluster 1) 
+# Also print percentage of each group for each categorical variable level
 # ==============================================================================
 def print_percentiles(df, variables, dataset_name):
     print(f"\nPercentiles for {dataset_name} dataset:")
@@ -429,10 +429,19 @@ def print_percentiles(df, variables, dataset_name):
             percentiles.columns = ['25th Percentile', '50th Percentile (Median)', '75th Percentile']
             print(percentiles)
 
+def print_categorical_percentages(df, categorical_vars, dataset_name):
+    print(f"\nCategorical variable percentages for {dataset_name} dataset:")
+    for var in categorical_vars:
+        if var in df.columns:
+            print(f"\nVariable: {var}")
+            percentages = df.groupby("sfc_external_cluster")[var].value_counts(normalize=True).unstack() * 100
+            print(percentages)
+
 # ALCOHOL DATASET
 # Exclude categorical variable alcohol drinker status p20117_i2 
 ALCOHOL_VARS_CONTINUOUS = [var for var in ALCOHOL_VARS if var != "p20117_i2"]
 print_percentiles(ALCOHOL_DF, ALCOHOL_VARS_CONTINUOUS, "Alcohol")
+print_categorical_percentages(ALCOHOL_DF, [var for var in ALCOHOL_VARS if var == "p20117_i2"], "Alcohol")
 
 # NMR METABOLOMICS DATASET
 print_percentiles(NMR_METABOLOMICS_DF, NMR_METABOLOMICS_VARS + ["insulin_resistance_proxy"], "NMR Metabolomics")
@@ -444,6 +453,7 @@ print_percentiles(PHYSICAL_ACTIVITY_DF, PHYSICAL_ACTIVITY_VARS, "Physical Activi
 # Exclude categorical variables sleeplessness/insomnia p1200_i2
 SLEEP_VARS_CONTINUOUS = [var for var in SLEEP_VARS if var != "p1200_i2"]
 print_percentiles(SLEEP_DF, SLEEP_VARS_CONTINUOUS, "Sleep")
+print_categorical_percentages(SLEEP_DF, [var for var in SLEEP_VARS if var == "p1200_i2"], "Sleep")
 
 # SOCIAL SUPPORT DATASET
 print_percentiles(SOCIAL_SUPPORT_DF, SOCIAL_SUPPORT_VARS, "Social Support")
