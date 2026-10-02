@@ -1,5 +1,6 @@
 """ Utilities for the analysis of MDD (subclinical) symptom associations with SFC-EXT derived MDD subtypes.
-This module provides utility functions for loading and preprocessing the symptom dataset, performing statistical tests,
+
+This script provides utility functions for loading and preprocessing the symptom dataset, performing statistical tests,
 applying multiple testing corrections, and generating plots to visualize the associations between MDD (subclinical) symptoms and 
 SFC-EXT derived MDD subtypes (Cluster 0 and Cluster 1).
 

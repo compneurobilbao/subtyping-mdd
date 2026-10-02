@@ -1,4 +1,20 @@
-""" Determining comorbidities (and their nature) for SFC external clusters
+""" Utils for determining comorbidity compositions for SFC external clusters
+
+This script provides utility functions for loading and preprocessing the comorbidity dataset, performing statistical tests, 
+applying multiple testing corrections, and generating plots to visualize the comorbidity compositions for SFC external clusters 
+(Cluster 0 and Cluster 1).
+
+Architecture
+------------
+The script is organized into functional sections:
+
+- **Utility Functions**
+
+- **Data Loading and Preprocessing**
+
+- **Statistical Testing**
+
+- **Visualization**
 """
 import os
 import pandas as pd
@@ -15,58 +31,19 @@ from statsmodels.stats.multitest import multipletests
 import logging
 
 # ==============================================================================
-# Configuration
+# UTILITY FUNCTIONS
 # ==============================================================================
-GENERAL_DATA_PATH = ".../data/UKB"
-SFC_EXT_CLUSTERS_DATA_PATH = os.path.join(GENERAL_DATA_PATH, "cohorts", "module_connectivity_features_with_covariates.csv")
-COMORBIDITIES_DATA_PATH = os.path.join(GENERAL_DATA_PATH, "cohorts", "depression_cohort_F32.csv")
-PLOTS_DIR = ".../reports/plots/comorbidities_sfc_external_clusters"
-
 # Set up logging to a file
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    handlers=[
-        logging.FileHandler(".../comorbidity_sfc_external_clusters.log"),
-    ]
-)
+def setup_logging(log_file_path: str):
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(log_file_path),
+            logging.StreamHandler()  # Also log to console
+        ]
+    )
 
-# ==============================================================================
-# Load datasets
-# ==============================================================================
-# Combined MDD and control cohort, with SFC-EXT derived subtypes
-SFC_EXT_DF = pd.read_csv(SFC_EXT_CLUSTERS_DATA_PATH)
-print(f"Combined MDD and control cohort loaded with shape: {SFC_EXT_DF.shape}")
-# Check if subtype column exists
-if "sfc_external_cluster" not in SFC_EXT_DF.columns:
-    raise ValueError("Column 'sfc_external_cluster' not found in SFC_EXT_DF")
-# Replace cluster labels with 'Cluster 0' and 'Cluster 1' for clarity
-SFC_EXT_DF["sfc_external_cluster"] = SFC_EXT_DF["sfc_external_cluster"].map({"Control": "Control", "0": "Cluster 0", "1": "Cluster 1"})
-
-# Comorbidity data for the MDD cohort 
-COMORBIDITIES_DF = pd.read_csv(COMORBIDITIES_DATA_PATH)
-print(f"Comorbidity data loaded with shape: {COMORBIDITIES_DF.shape}")
-
-# ==============================================================================
-# Extract relevant columns from each dataset and make new dataset
-# ==============================================================================
-# Extract only the necessary columns from the comorbidities dataset
-comorbidities_subset = COMORBIDITIES_DF[['eid', 'codes']].copy()
-# Extract only the necessary columns from the sfc_external_clusters dataset and ensure no 'Control' entries are included
-sfc_clusters_subset = SFC_EXT_DF[['eid', 'sfc_external_cluster']].copy()
-sfc_clusters_subset = sfc_clusters_subset[sfc_clusters_subset['sfc_external_cluster'] != 'Control']
-# Ensure that 'eid' is of the same type in both datasets for merging
-sfc_clusters_subset['eid'] = sfc_clusters_subset['eid'].astype(str)
-comorbidities_subset['eid'] = comorbidities_subset['eid'].astype(str)
-# Merge the two datasets on 'eid' to create a combined dataset
-combined_df = pd.merge(sfc_clusters_subset, comorbidities_subset, on='eid', how='left')
-print(f"Combined dataset created with shape: {combined_df.shape}")
-print(f"Columns in combined dataset: {combined_df.columns.tolist()}")
-print(f"Sample of combined dataset:\n{combined_df.head()}")
-
-# ==============================================================================
-# Some helper functions for processing codes and determining stats and plotting
-# ==============================================================================
 def split_codestring(codestring: str) -> List[str]:
     """
     Split a codes string into individual codes.
@@ -102,8 +79,8 @@ def split_codestring(codestring: str) -> List[str]:
 
 def count_codes_in_cohort(
     cohort_df: pd.DataFrame,
+    coding_filepath: str,
     codes_column_cohort: str = 'codes',
-    coding_filepath: str = '.../data/UKB/coding19.tsv',
     output_path: str = None
 ) -> pd.DataFrame:
     """
@@ -116,7 +93,7 @@ def count_codes_in_cohort(
     codes_column_cohort : str, optional
         Name of the column containing ICD-10 codes (default: 'codes').
     coding_filepath : str, optional
-        Filepath to the coding file mapping ICD-10 codes to titles (default: '.../data/UKB/coding19.tsv', from UKB showcase).
+        Filepath to the coding file mapping ICD-10 codes to titles.
     output_path : str, optional
         If provided, save the resulting code distribution csv file to this directory (default: None)
         
@@ -182,13 +159,121 @@ def count_codes_in_cohort(
 
     return code_distribution
 
+def _extract_letters(data: str, exclude_prefixes: tuple = ('F32',)):
+    """
+    Extract the leading letter of each '|'-separated token in a string,
+    skipping any token that starts with one of exclude_prefixes.
+    """
+    if pd.isna(data):
+        return []
+    tokens = data.split('|')
+    letters = []
+    for t in tokens:
+        if any(t.upper().startswith(p.upper()) for p in exclude_prefixes):
+            continue  # skip excluded codes entirely
+        m = re.match(r'[A-Za-z]+', t)
+        if m:
+            letters.append(m.group().upper())
+    return letters
+
+# ==============================================================================
+# DATA LOADING AND PREPROCESSING
+# ==============================================================================
+def load_and_preprocess_cohort_data(cohort_data_path: str) -> pd.DataFrame:
+    """
+    Load the combined MDD and control cohort data, check for required columns,
+    and preprocess the 'sfc_external_cluster' column for clarity.
+    """
+    cohort_df = pd.read_csv(cohort_data_path)
+    print(f"Combined MDD and control cohort loaded with shape: {cohort_df.shape}")
+
+    if "sfc_external_cluster" not in cohort_df.columns:
+        raise ValueError("Column 'sfc_external_cluster' not found in SFC_EXT_DF")
+
+    # Replace cluster labels with 'Cluster 0' and 'Cluster 1' for clarity
+    cohort_df["sfc_external_cluster"] = cohort_df["sfc_external_cluster"].map({
+        "Control": "Control",
+        "0": "Cluster 0",
+        "1": "Cluster 1"
+    })
+
+    return cohort_df
+
+def load_and_preprocess_comorbidity_data(comorbidity_data_path: str) -> pd.DataFrame:
+    """
+    Load the comorbidity data and check for required columns.
+    """
+    comorbidity_df = pd.read_csv(comorbidity_data_path)
+    print(f"Comorbidity data loaded with shape: {comorbidity_df.shape}")
+
+    if "eid" not in comorbidity_df.columns or "codes" not in comorbidity_df.columns:
+        raise ValueError("Columns 'eid' and/or 'codes' not found in COMORBIDITIES_DF")
+
+    return comorbidity_df
+
+def extract_relevant_columns_and_merge(SFC_EXT_DF: pd.DataFrame, COMORBIDITIES_DF: pd.DataFrame) -> pd.DataFrame:
+    """
+    Extract relevant columns from SFC_EXT_DF and COMORBIDITIES_DF, and merge them on 'eid'.
+    """
+    # Extract only the necessary columns from the comorbidities dataset
+    comorbidities_subset = COMORBIDITIES_DF[['eid', 'codes']].copy()
+    # Extract only the necessary columns from the sfc_external_clusters dataset and ensure no 'Control' entries are included
+    sfc_clusters_subset = SFC_EXT_DF[['eid', 'sfc_external_cluster']].copy()
+    sfc_clusters_subset = sfc_clusters_subset[sfc_clusters_subset['sfc_external_cluster'] != 'Control']
+    # Ensure that 'eid' is of the same type in both datasets for merging
+    sfc_clusters_subset['eid'] = sfc_clusters_subset['eid'].astype(str)
+    comorbidities_subset['eid'] = comorbidities_subset['eid'].astype(str)
+    # Merge the two datasets on 'eid' to create a combined dataset
+    combined_df = pd.merge(sfc_clusters_subset, comorbidities_subset, on='eid', how='left')
+    print(f"Combined dataset created with shape: {combined_df.shape}")
+    print(f"Columns in combined dataset: {combined_df.columns.tolist()}")
+    print(f"Sample of combined dataset:\n{combined_df.head()}")
+    
+    return combined_df
+
+def letter_stats_overall(
+    df: pd.DataFrame, 
+    codes_column_cohort: str
+) -> dict:
+    """
+    Compute aggregate letter stats across ALL rows combined (excluding primary diagnosis codes like F32).
+    """
+    all_letters = df[codes_column_cohort].apply(_extract_letters).sum()  # flattens lists
+    total = len(all_letters)
+    counts = Counter(all_letters)
+    e_count = counts.get('E', 0)
+    f_count = counts.get('F', 0)
+    g_count = counts.get('G', 0)
+    i_count = counts.get('I', 0)
+    k_count = counts.get('K', 0)
+    r_count = counts.get('R', 0)
+    z_count = counts.get('Z', 0)
+
+    return {
+        'total_letters': total,
+        'e_count': e_count,
+        'f_count': f_count,
+        'g_count': g_count,
+        'i_count': i_count,
+        'k_count': k_count,
+        'r_count': r_count,
+        'z_count': z_count,
+        'e_proportion': e_count / total if total else 0.0,
+        'f_proportion': f_count / total if total else 0.0,
+        'g_proportion': g_count / total if total else 0.0,
+        'i_proportion': i_count / total if total else 0.0,
+        'k_proportion': k_count / total if total else 0.0,
+        'r_proportion': r_count / total if total else 0.0,
+        'z_proportion': z_count / total if total else 0.0,
+        'letter_counts': dict(counts.most_common()),  # sorted most → least),
+    }
+
 def build_comorbidity_indicator_matrix(
     cohort_df: pd.DataFrame,
-    *,
+    coding_filepath: str,
     eid_column: str = 'eid',
     codes_column_cohort: str = 'codes',
     proportion_threshold: float = 0.10,
-    coding_filepath: str = '.../data/UKB/coding19.tsv',
     max_comorbidities: Optional[int] = None,
     include_codes: Optional[List[str]] = None,
     exclude_codes: Optional[List[str]] = None,
@@ -218,7 +303,7 @@ def build_comorbidity_indicator_matrix(
         Minimum prevalence (count / n_subjects, as in `count_codes_in_cohort`) for a code
         to be included when `include_codes` is not provided (default: 0.10).
     coding_filepath : str
-        Passed through to `count_codes_in_cohort` (default points to UKB coding file).
+        Passed through to `count_codes_in_cohort`.
     max_comorbidities : int | None
         If provided, only keep the top-N most frequent codes after thresholding.
     include_codes : list[str] | None
@@ -405,6 +490,9 @@ def build_comorbidity_indicator_matrix(
 
     return cohort_out
 
+# ==============================================================================
+# STATISTICAL TESTING
+# ==============================================================================
 def compare_comorbidities(
     df,
     group_col,
@@ -576,118 +664,9 @@ def compare_category_proportions(
  
     return results.sort_values("p_value").reset_index(drop=True)
 
-def _extract_letters(data: str, exclude_prefixes: tuple = ('F32',)):
-    """
-    Extract the leading letter of each '|'-separated token in a string,
-    skipping any token that starts with one of exclude_prefixes.
-    """
-    if pd.isna(data):
-        return []
-    tokens = data.split('|')
-    letters = []
-    for t in tokens:
-        if any(t.upper().startswith(p.upper()) for p in exclude_prefixes):
-            continue  # skip excluded codes entirely
-        m = re.match(r'[A-Za-z]+', t)
-        if m:
-            letters.append(m.group().upper())
-    return letters
-
-def letter_stats_overall(
-    df: pd.DataFrame, 
-    codes_column_cohort: str
-) -> dict:
-    """
-    Compute aggregate letter stats across ALL rows combined (excluding primary diagnosis codes like F32).
-    """
-    all_letters = df[codes_column_cohort].apply(_extract_letters).sum()  # flattens lists
-    total = len(all_letters)
-    counts = Counter(all_letters)
-    e_count = counts.get('E', 0)
-    f_count = counts.get('F', 0)
-    g_count = counts.get('G', 0)
-    i_count = counts.get('I', 0)
-    k_count = counts.get('K', 0)
-    r_count = counts.get('R', 0)
-    z_count = counts.get('Z', 0)
-
-    return {
-        'total_letters': total,
-        'e_count': e_count,
-        'f_count': f_count,
-        'g_count': g_count,
-        'i_count': i_count,
-        'k_count': k_count,
-        'r_count': r_count,
-        'z_count': z_count,
-        'e_proportion': e_count / total if total else 0.0,
-        'f_proportion': f_count / total if total else 0.0,
-        'g_proportion': g_count / total if total else 0.0,
-        'i_proportion': i_count / total if total else 0.0,
-        'k_proportion': k_count / total if total else 0.0,
-        'r_proportion': r_count / total if total else 0.0,
-        'z_proportion': z_count / total if total else 0.0,
-        'letter_counts': dict(counts.most_common()),  # sorted most → least),
-    }
-
-def _extract_codes(data: str, exclude_prefixes: tuple = ('F32',)):
-    """
-    Extract the letter + 2-digit category for each '|'-separated token. Excluding any token that starts with one of exclude_prefixes.
-    e.g. 'R401' -> 'R40', 'F171' -> 'F17', 'I48' -> 'I48'
-    """
-    if pd.isna(data):
-        return []
-    tokens = data.split('|')
-    codes = []
-    for t in tokens:
-        if any(t.upper().startswith(p.upper()) for p in exclude_prefixes):
-            continue  # skip excluded codes entirely
-        m = re.match(r'([A-Za-z]+)(\d+)', t)
-        if not m:
-            continue
-        letter, digits = m.group(1).upper(), m.group(2)
-        if len(digits) < 2:
-            continue  # not enough digits to determine a category
-        codes.append(f"{letter}{digits[:2]}")
-    return codes
-
-
-def range_stats_overall(
-    df: pd.DataFrame, 
-    codes_column_cohort: str,
-    letter: str = 'R', 
-    low: int = 40, 
-    high: int = 46
-) -> dict:
-    """
-    Compute aggregate stats for codes in [letter+low, letter+high]
-    (e.g. R40-R46) vs all other codes, across ALL rows combined. Excludes primary diagnosis codes like F32.
-    """
-    all_codes = df[codes_column_cohort].apply(_extract_codes).sum()  # flatten lists
-    total = len(all_codes)
-
-    target_categories = {f"{letter}{n:02d}" for n in range(low, high + 1)}
-    counts = Counter(all_codes)
-    target_count = sum(v for k, v in counts.items() if k in target_categories)
-
-    # Breakdown of just the target range, sorted most -> least,
-    # including categories with zero occurrences.
-    range_breakdown = dict(
-        sorted(
-            ((cat, counts.get(cat, 0)) for cat in target_categories),
-            key=lambda x: x[1],
-            reverse=True
-        )
-    )
-
-    return {
-        'total_letters': total,
-        'range_count': target_count,
-        'other_count': total - target_count,
-        'range_proportion': target_count / total if total else 0.0,
-        'range_breakdown': range_breakdown,
-    }
-
+# ==============================================================================
+# VISUALIZATION
+# ==============================================================================
 def plot_comorbidity_distribution(
     code_distribution: pd.DataFrame,
     proportion_threshold: float = 0.10,
@@ -859,135 +838,3 @@ def plot_comorbidity_categories(
         print(f"Plot saved to {output_path}")
 
     plt.show()
-
-# ==============================================================================
-# Actually processing codes and determining stats and plotting
-# ==============================================================================
-# 1: Comorbidity distribution for each SFC external cluster
-# Get the ICD-10 code distribution for each SFC external cluster
-code_distribution_cluster_0 = count_codes_in_cohort(
-    combined_df[combined_df['sfc_external_cluster'] == 'Cluster 0'],
-)
-logging.info(f"Code distribution for Cluster 0:\n{code_distribution_cluster_0.head()}")
-
-code_distribution_cluster_1 = count_codes_in_cohort(
-    combined_df[combined_df['sfc_external_cluster'] == 'Cluster 1'],
-)
-logging.info(f"Code distribution for Cluster 1:\n{code_distribution_cluster_1.head()}")
-# Test significant differences in code distributions between clusters
-# First add comorbidity indicator columns to the combined_df for each cluster
-combined_df_with_indicators = build_comorbidity_indicator_matrix(
-    combined_df,
-    eid_column="eid",
-    codes_column_cohort="codes",
-    proportion_threshold=0.10,
-    exclude_codes="F32"
-)
-# Now test
-comorbidity_cols = [col for col in combined_df_with_indicators.columns if col != "sfc_external_cluster" and col != "eid" and col != "codes"]
-results = compare_comorbidities(
-    combined_df_with_indicators,
-    group_col="sfc_external_cluster",
-    comorbidity_cols=comorbidity_cols,
-)
-logging.info(f"Comorbidity comparison results:\n{results}")  # all insignificant (p_adj > 0.05) after FDR correction, so no significant differences between clusters (consistent with previous tests on the top 3 in our supplementary material)
-# Plot the comorbidity distribution for each cluster
-plot_comorbidity_distribution(
-    code_distribution_cluster_0,
-    proportion_threshold=0.10,
-    title="ICD-10 Code Distribution for SFC External Cluster 0",
-    output_path=os.path.join(PLOTS_DIR, "sfc_external_cluster_0_comorbidity_distribution.svg"),
-)
-
-plot_comorbidity_distribution(
-    code_distribution_cluster_1,
-    proportion_threshold=0.10,
-    title="ICD-10 Code Distribution for SFC External Cluster 1",
-    output_path=os.path.join(PLOTS_DIR, "sfc_external_cluster_1_comorbidity_distribution.svg"),
-)
-
-# 2: Category distribution for each SFC external cluster
-# Determine stats of distinct ICD-10 categories (letter counts) for each cluster
-f_letter_stats_overall_cluster_0 = letter_stats_overall(
-    combined_df[combined_df['sfc_external_cluster'] == 'Cluster 0'],
-    codes_column_cohort='codes'
-)
-logging.info(f"Letter stats for Cluster 0: {f_letter_stats_overall_cluster_0}")
-
-f_letter_stats_overall_cluster_1 = letter_stats_overall(
-    combined_df[combined_df['sfc_external_cluster'] == 'Cluster 1'],
-    codes_column_cohort='codes'
-)
-logging.info(f"Letter stats for Cluster 1: {f_letter_stats_overall_cluster_1}")
-# Test significant differences in letter category distributions between clusters
-# First, create a DataFrame with counts of each letter category for each cluster
-letter_counts_df = pd.DataFrame({
-    'category': ['E', 'F', 'G', 'I', 'K', 'R', 'Z'],
-    'count_cluster_0': [f_letter_stats_overall_cluster_0.get(f"{cat.lower()}_count", 0) for cat in ['E', 'F', 'G', 'I', 'K', 'R', 'Z']],
-    'count_cluster_1': [f_letter_stats_overall_cluster_1.get(f"{cat.lower()}_count", 0) for cat in ['E', 'F', 'G', 'I', 'K', 'R', 'Z']],
-})
-n_cluster_0 = f_letter_stats_overall_cluster_0.get('total_letters', 1)
-n_cluster_1 = f_letter_stats_overall_cluster_1.get('total_letters', 1)
-# Now test
-category_results = compare_category_proportions(
-    letter_counts_df,
-    category_col='category',
-    count_col_g1='count_cluster_0',
-    count_col_g2='count_cluster_1',
-    n_g1=n_cluster_0,
-    n_g2=n_cluster_1,
-    group_labels=('Cluster 0', 'Cluster 1'),
-)
-logging.info(f"Category comparison results:\n{category_results}")  # all insignificant (p_adj > 0.05) after FDR correction, so no significant differences between clusters 
-# Plot the letter category distribution for each cluster
-plot_comorbidity_categories(
-    f_letter_stats_overall_cluster_0,
-    title="ICD-10 Category Distribution for SFC External Cluster 0",
-    output_path=os.path.join(PLOTS_DIR, "sfc_external_cluster_0_category_distribution.svg")
-)
-
-plot_comorbidity_categories(
-    f_letter_stats_overall_cluster_1,
-    title="ICD-10 Category Distribution for SFC External Cluster 1",
-    output_path=os.path.join(PLOTS_DIR, "sfc_external_cluster_1_category_distribution.svg")
-)
-
-# 3: Range distribution for each SFC external cluster
-# Determine stats for specific ICD-10 code ranges (e.g., R40-R46) for each cluster
-range_stats_overall_cluster_0 = range_stats_overall(
-    combined_df[combined_df['sfc_external_cluster'] == 'Cluster 0'],
-    codes_column_cohort='codes',
-    letter='R',
-    low=40,
-    high=46
-)
-logging.info(f"Range stats for Cluster 0 (R40-R46): {range_stats_overall_cluster_0}")
-
-range_stats_overall_cluster_1 = range_stats_overall(
-    combined_df[combined_df['sfc_external_cluster'] == 'Cluster 1'],
-    codes_column_cohort='codes',
-    letter='R',
-    low=40,
-    high=46
-)
-logging.info(f"Range stats for Cluster 1 (R40-R46): {range_stats_overall_cluster_1}")
-# Test significant differences in range distributions between clusters
-# First, create a DataFrame with counts of the target range and other codes for each cluster
-range_counts_df = pd.DataFrame({
-    'category': ['R40-R46'],
-    'count_cluster_0': [range_stats_overall_cluster_0.get('range_count', 0)],
-    'count_cluster_1': [range_stats_overall_cluster_1.get('range_count', 0)],
-})
-n_cluster_0 = range_stats_overall_cluster_0.get('total_letters', 1)
-n_cluster_1 = range_stats_overall_cluster_1.get('total_letters', 1)
-# Now test
-range_results = compare_category_proportions(
-    range_counts_df,
-    category_col='category',
-    count_col_g1='count_cluster_0',
-    count_col_g2='count_cluster_1',
-    n_g1=n_cluster_0,
-    n_g2=n_cluster_1,
-    group_labels=('Cluster 0', 'Cluster 1'),
-)
-logging.info(f"Range comparison results:\n{range_results}")  # all insignificant (p_adj > 0.05) after FDR correction, so no significant differences between clusters 
