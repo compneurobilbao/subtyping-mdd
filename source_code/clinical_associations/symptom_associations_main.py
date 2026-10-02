@@ -39,6 +39,7 @@ def main():
     SYMPTOMS_DATA_PATH = os.path.join(GENERAL_DATA_PATH, "mental_health")
     LOG_PATH = os.path.join(SYMPTOMS_DATA_PATH, "symptom_associations_log.txt")
     PLOTS_DIR = ".../reports/plots/symptom_associations"
+    
     # Load and preprocess cohort data
     cohort_df = load_and_preprocess_cohort_data(COHORT_DATA_PATH)
     

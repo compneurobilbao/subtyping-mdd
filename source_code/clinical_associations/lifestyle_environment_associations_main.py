@@ -39,6 +39,7 @@ def main():
     LIFESTYLE_ENVIRONMENT_DATA_PATH = os.path.join(GENERAL_DATA_PATH, "lifestyle_environment")
     LOG_PATH = os.path.join(LIFESTYLE_ENVIRONMENT_DATA_PATH, "lifestyle_environment_associations_log.txt")
     PLOTS_DIR = ".../reports/plots/lifestyle_environment_associations"
+    
     # Load and preprocess cohort data
     cohort_df = load_and_preprocess_cohort_data(COHORT_DATA_PATH)
     
