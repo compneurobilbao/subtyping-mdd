@@ -54,6 +54,11 @@ def main():
     # Plot distributions for each dataset
     plot_lifestyle_environment_distributions(lifestyle_environment_dfs_plots, corrected_pvals, PLOTS_DIR)
 
+    # Print completion message
+    print("Lifestyle and environment association analyses completed successfully.")
+    print(f"Results logged in: {LOG_PATH}")
+    print(f"Plots saved in: {PLOTS_DIR}")
+
 if __name__ == "__main__":
     main()
 
