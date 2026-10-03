@@ -99,14 +99,23 @@ External structure-function coupling-derived clusters are chosen for the module-
 ### `14_MRIcroGL_visuals.ipynb`
 This notebook only describes where to find the scripts to reproduce the brainmap visualizations in MRIcroGL (Rorden, 2025).
 
+### `15_lifestyle_environment_associations.ipynb`
+This notebook implements a pipeline for characterizing the lifestyle and environmental associations of the SFC-EXT derived MDD subtypes (Cluster 0 and Cluster 1), as well as the total depression cohort (Cluster 0 + Cluster 1 combined) versus controls. It includes steps for loading and preprocessing the data, performing Mann-Whitney U tests for continuous variables and Chi-squared tests for categorical variables, applying multiple testing correction to the p-values, and visualizing the results. The notebook also saves the results of the association analyses in a TXT file and generates plots to visualize the associations. The notebook uses the results (`module_connectivity_features_with_covariates.csv`) from the clustering analyses in `10_module_clustering.ipynb`.
+
+### `16_symptom_associations.ipynb`
+This notebook implements a pipeline for characterizing the symptom associations of the SFC-EXT derived MDD subtypes (Cluster 0 and Cluster 1), as well as the total depression cohort (Cluster 0 + Cluster 1 combined) versus controls. It includes steps for loading and preprocessing the data, performing Mann-Whitney U tests for continuous variables and Chi-squared tests for categorical variables, applying multiple testing correction to the p-values, and visualizing the results. The notebook also saves the results of the association analyses in a TXT file and generates plots to visualize the associations. The notebook uses the results (`module_connectivity_features_with_covariates.csv`) from the clustering analyses in `10_module_clustering.ipynb`.
+
+### `17_comorbidity_compositions_SFC_EXT.ipynb`
+This notebook implements a pipeline for characterizing the comorbidity compositions (individual ICD-10 codes and categories) of the SFC-EXT derived MDD subtypes (Cluster 0 and Cluster 1). It includes steps for loading and preprocessing the data, performing Chi-squared tests for categorical variables, applying multiple testing correction to the p-values, and visualizing the results. The notebook also saves the results of the association analyses in a TXT file and generates plots to visualize the associations. The notebook uses the results (`depression_cohort_F32.csv`) from the analyses in `00_initial_cohort_selection.ipynb` and the results (`module_connectivity_features_with_covariates.csv`) from the clustering analyses in `10_module_clustering.ipynb`.
+
 ## Source code
 
 Organized as follows:
 - `atlas/`: contains utility functions (and a CLI interface) for the atlas integration process in `03_atlas_integration.ipynb`.
 
-- `clinical_associations/`: contains utility functions (and main scripts if you wish to skip the notebooks) for the cognitive association analyses in `07_global_cognitive_associations.ipynb` and `10_module_cognitive_associations.ipynb`.
+- `clinical_associations/`: contains utility functions (and main scripts if you wish to skip the notebooks) for the cognitive association analyses in `07_global_cognitive_associations.ipynb` and `10_module_cognitive_associations.ipynb`, and for the characterizations in `15_lifestyle_environment_associations.ipynb` and `16_symptom_associations.ipynb`.
 
-- `clusters/`: contains utility functions (and main scripts if you wish to skip the notebooks) for the global-level and module-level clustering analyses in `06_global_clustering.ipynb` and `09_module_clustering.ipynb`, respectively, and for the confirmatory analyses in `11_global_clustering_confirmatory.ipynb` and `12_module_clustering_confirmatory.ipynb`.
+- `clusters/`: contains utility functions (and main scripts if you wish to skip the notebooks) for the global-level and module-level clustering analyses in `06_global_clustering.ipynb` and `09_module_clustering.ipynb`, respectively, for the confirmatory analyses in `11_global_clustering_confirmatory.ipynb` and `12_module_clustering_confirmatory.ipynb`, and for the comorbidity compositions in `17_comorbidity_compositions_SFC_EXT.ipynb`.
 
 - `cohort_definition/`: contains utility functions (and main scripts if you wish to skip the notebooks) for the initial cohort selection in `00_initial_cohort_selection.ipynb` and for the propensity score matching in `01_cohort_matching.ipynb`.
 
